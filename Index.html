@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en"><head>
+<script>window.BRANDNAME_API_BASE="https://REPLACE-WITH-MAIN-WORKER.workers.dev";</script>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title>Brandname</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -79,7 +80,7 @@ header .r{justify-content:flex-end}
     <button class="ico" id="mbtn" aria-label="Menu"><span class="ham"><i></i><i></i><i></i></span></button>
     <button class="ico fbtn" id="fbtn" aria-label="Filter"><span class="gender">&#9893;</span><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff" style="margin-left:6px"><path d="M2 6l10 12L22 6z"/></svg></button>
   </div>
-  <a class="logo" href="/">Brand<b>name</b></a>
+  <a class="logo" href="./">Brand<b>name</b></a>
   <div class="r">
     <button class="ico" id="sbtn" aria-label="Search"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="10" cy="10" r="6.5"/><path d="M15 15l6 6"/></svg></button>
     <button class="ico" id="pbtn" aria-label="Account"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="12" r="11"/><circle cx="12" cy="9.5" r="3.6" fill="#16161b"/><path d="M5.5 18.5c1.4-3 4-4 6.5-4s5.1 1 6.5 4A10 10 0 0 1 5.5 18.5z" fill="#16161b"/></svg></button>
@@ -130,8 +131,8 @@ header .r{justify-content:flex-end}
     <span class="logo">Brand<b>name</b></span>
   </div>
   <div style="height:34px"></div>
-  <a class="it" href="/upload"><svg viewBox="0 0 24 24" fill="#fff"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>Upload</a>
-  <form method="POST" action="/logout"><button class="it" type="submit"><svg viewBox="0 0 24 24" fill="#fff"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>Log out</button></form>
+  <a class="it" href="https://REPLACE-WITH-MAIN-WORKER.workers.dev/upload"><svg viewBox="0 0 24 24" fill="#fff"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>Upload</a>
+  <form method="POST" action="https://REPLACE-WITH-MAIN-WORKER.workers.dev/logout"><button class="it" type="submit"><svg viewBox="0 0 24 24" fill="#fff"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>Log out</button></form>
 </div></div></div>
 
 <script>
@@ -157,7 +158,7 @@ $("km_copy").onclick=function(){copyText(location.origin+"/watch/"+kmId,"Link co
 $("km_share").onclick=function(){var u=location.origin+"/watch/"+kmId;$("km").classList.remove("on");if(navigator.share)navigator.share({title:kmTitle,url:u}).catch(function(){});else copyText(u,"Link copied")};
 document.addEventListener("click",function(e){var m=$("km");if(m.classList.contains("on")&&!m.contains(e.target))m.classList.remove("on")});
 function card(v){
-  var a=document.createElement("a");a.className="card";a.href="/watch/"+v.id;
+  var a=document.createElement("a");a.className="card";a.href="https://REPLACE-WITH-MAIN-WORKER.workers.dev/watch/"+v.id;
   a.innerHTML='<div class="thumb"><img loading="lazy" alt=""><span class="dur"></span></div><div class="meta"><div class="row"><span class="ch">'+AVATAR+'<span class="chn"></span></span><span class="views">'+EYE+'<span class="vn"></span></span></div><div class="row"><div class="title"></div><button class="kb" type="button" aria-label="More">'+KEBAB+'</button></div></div>';
   a.querySelector("img").src=v.thumb;
   a.querySelector(".dur").textContent=v.duration;
@@ -176,8 +177,8 @@ async function load(){
   if(cat)p.set("cat",cat);
   p.set("offset",String(seen.length));
   if(!q&&sort==="random")p.set("seed",String(seed));
-  var r;try{r=await fetch("/api/videos?"+p)}catch(e){loading=false;return}
-  if(r.status===401){location.href="/";return}
+  var r;try{r=await fetch(window.BRANDNAME_API_BASE+"/api/videos?"+p,{credentials:"include"})}catch(e){loading=false;return}
+  if(r.status===401){location.href="./";return}
   var d=await r.json();
   if(!d.length){
     done=true;loading=false;if(!feed.children.length)empty.style.display="block";return;
@@ -209,8 +210,8 @@ function openS(){
 function closeS(){$("so").classList.remove("on");document.body.style.overflow="";$("si").blur()}
 function showTrend(){$("trend").style.display="block";$("sug").style.display="none";chevUpdate()}
 async function loadTrend(){
-  var r;try{r=await fetch("/api/trending")}catch(e){return}
-  if(r.status===401){location.href="/";return}
+  var r;try{r=await fetch(window.BRANDNAME_API_BASE+"/api/trending",{credentials:"include"})}catch(e){return}
+  if(r.status===401){location.href="./";return}
   var d=await r.json();trendLoaded=true;
   var tl=$("tlist");tl.innerHTML="";
   d.searches.forEach(function(t){var a=document.createElement("a");a.href="#";a.textContent=t;a.onclick=function(e){e.preventDefault();runSearch(t)};tl.appendChild(a)});
@@ -235,7 +236,7 @@ $("si").addEventListener("input",function(){
   var v=$("si").value.trim();
   if(!v){showTrend();return}
   sugTimer=setTimeout(async function(){
-    var r;try{r=await fetch("/api/suggest?q="+encodeURIComponent(v))}catch(e){return}
+    var r;try{r=await fetch(window.BRANDNAME_API_BASE+"/api/suggest?q="+encodeURIComponent(v),{credentials:"include"})}catch(e){return}
     if(!r.ok)return;var d=await r.json();
     if($("si").value.trim()!==v)return;
     var box=$("sug");box.innerHTML="";
