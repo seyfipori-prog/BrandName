@@ -1,0 +1,183 @@
+<!doctype html><html><head>
+<script>window.BRANDNAME_ADMIN_API_BASE="https://REPLACE-WITH-ADMIN-WORKER.workers.dev";</script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Admin - review queue</title><style><style>*{box-sizing:border-box}body{margin:0;background:#0b0b0e;color:#fff;font-family:Roboto,Arial,sans-serif}
+.app{max-width:560px;margin:0 auto;padding:0 0 40px}.top{height:55px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;background:#16161b;position:sticky;top:0;z-index:5}
+.top b{font-size:16px}.top button,.lnk{background:none;border:0;color:#ffa200;font:500 14px Roboto,Arial;cursor:pointer}
+.card{background:#15151a;border:1px solid #26262c;border-radius:12px;margin:14px 12px;overflow:hidden}
+video{width:100%;aspect-ratio:16/9;background:#000;display:block}
+.in{padding:12px}.t{font-size:15px;line-height:21px;margin:0 0 6px}.m{font-size:12px;color:#999;line-height:18px}
+.act{display:flex;gap:8px;align-items:center;margin-top:12px}
+input{background:#1c1c20;border:1px solid #333;border-radius:8px;color:#fff;height:40px;padding:0 10px;font:400 15px Roboto,Arial}
+.tabs{display:flex;gap:8px;padding:12px 12px 0}.tabs button{flex:1;height:38px;border-radius:999px;border:1px solid #333;background:#15151a;color:#ccc;font:500 14px Roboto,Arial;cursor:pointer}.tabs button.on{background:#ffa200;color:#000;border-color:#ffa200}
+.cred{margin-top:12px;padding:10px 12px;background:#10201a;border:1px solid #1f6b45;border-radius:10px;font-size:14px;line-height:24px;word-break:break-all}.cred code{font-size:15px;color:#7dffb3}.cred button{margin-top:8px}
+.urow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 12px;padding:10px 12px;background:#15151a;border:1px solid #26262c;border-radius:10px;font-size:14px}.urow small{color:#999;display:block}
+.coins{width:90px}.rs{flex:1;min-width:0}
+.b{height:40px;border:0;border-radius:999px;padding:0 16px;font:700 14px Roboto,Arial;cursor:pointer}
+.ok{background:#2fb344;color:#fff}.no{background:#c0392b;color:#fff}.b:disabled{opacity:.5}
+#bn{display:none;margin:12px;padding:10px 12px;background:#2a2410;border:1px solid #6b5a14;border-radius:10px;font-size:13px}
+h3{font-size:13px;color:#999;margin:22px 14px 6px;font-weight:500}.h{font-size:13px;color:#bbb;margin:6px 14px;line-height:19px}
+#empty{text-align:center;color:#888;padding:40px 0;font-size:14px;display:none}</style></style></head>
+<body><div class="app">
+<div class="top"><b>Admin</b><form method="POST" action="https://REPLACE-WITH-ADMIN-WORKER.workers.dev/logout" style="margin:0"><button type="submit">Log out</button></form></div>
+<div class="tabs"><button id="t1" class="on" type="button">Review <span id="cnt"></span></button><button id="t2" type="button">Videos</button><button id="t3" type="button">Accounts</button></div>
+<div id="p1">
+<div id="bn">New requests arrived. <button class="lnk" id="rf" type="button">Refresh</button></div>
+<div id="list"></div><div id="empty">No requests waiting</div>
+<h3>Recent decisions</h3><div id="recent"></div>
+</div>
+<div id="pVideos" style="display:none"><h3>Published videos</h3><div id="vlist"></div><div id="vempty" class="h" style="display:none">No published videos found.</div></div>
+<div id="p2" style="display:none">
+<div class="card"><div class="in">
+<p class="t">Create account</p>
+<input id="nu" placeholder="Username (3-24: a-z 0-9 _)" maxlength="24" autocapitalize="off" autocomplete="off" style="width:100%">
+<input id="np" placeholder="Password (leave empty to generate)" maxlength="100" autocomplete="off" style="width:100%;margin-top:8px">
+<label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:14px;color:#ddd"><input id="ns" type="checkbox" style="width:auto;height:auto"> Single using (فقط روی یک دستگاه، با توکن یک‌بار مصرف)</label>
+<div class="act"><button class="b ok" id="mk" type="button" style="width:100%">Create account</button></div>
+<div id="res"></div>
+</div></div>
+<h3>Accounts</h3><div id="ulist"></div>
+</div>
+</div>
+<script>
+var DEF=10;
+var $=function(i){return document.getElementById(i)};
+var shown="";
+function fmtSize(n){return n>=1e9?(n/1e9).toFixed(2)+" GB":(n/1e6).toFixed(1)+" MB"}
+function fmtDur(s){s=s||0;var m=Math.floor(s/60),x=s%60;return m+":"+(x<10?"0":"")+x}
+function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+async function getQ(){var r=await fetch(window.BRANDNAME_ADMIN_API_BASE+"/api/queue",{credentials:"include"});if(r.status===401){location.href="/";return null}return r.json()}
+function card(v){
+  var c=el("div","card"),vid=document.createElement("video");
+  vid.controls=true;vid.playsInline=true;vid.preload="metadata";vid.poster="/media/t/"+v.id;vid.src="/media/v/"+v.id;c.appendChild(vid);
+  var d=el("div","in");
+  d.appendChild(el("p","t",v.title));
+  d.appendChild(el("div","m",(v.wants_coins?"COINS REQUESTED":"no coins requested")+" - #"+v.id+" - by "+v.username+(v.channel?" - channel: "+v.channel:"")+" - "+fmtDur(v.duration)+" - "+fmtSize(v.size)+" - "+v.created_at+" UTC"));
+  try{var tg=JSON.parse(v.tags_json||"{}");var tt=Object.keys(tg).map(function(k){return k+": "+tg[k].join(", ")}).join("  |  ");if(tt)d.appendChild(el("div","m","Tags - "+tt))}catch(e){}
+  var a=el("div","act"),coins=el("input","coins");coins.type="number";coins.min="0";coins.value=String(v.wants_coins?DEF:0);coins.setAttribute("aria-label","Coins");
+  var ok=el("button","b ok","Approve"),rs=el("input","rs");rs.placeholder="Reason (optional)";rs.maxLength=200;
+  var no=el("button","b no","Reject");
+  a.appendChild(coins);a.appendChild(ok);d.appendChild(a);
+  var a2=el("div","act");a2.appendChild(rs);a2.appendChild(no);d.appendChild(a2);c.appendChild(d);
+  async function act(path,body,btn){
+    ok.disabled=no.disabled=true;
+    var r=await fetch(window.BRANDNAME_ADMIN_API_BASE+path,{credentials:"include",method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    var j=await r.json().catch(function(){return{}});
+    if(r.status===401){location.href="/";return}
+    if(!r.ok){alert(j.error||"Failed");}
+    render(true);
+  }
+  ok.onclick=function(){var n=parseInt(coins.value,10);if(!(n>=0)){alert("Enter a valid coin amount");return}if(confirm(n>0?"Approve and credit "+n+" coins to "+v.username+"?":"Approve (no coins)?"))act("/api/approve",{id:v.id,coins:n})};
+  no.onclick=function(){if(confirm("Reject and delete this video?"))act("/api/reject",{id:v.id,reason:rs.value})};
+  return c;
+}
+async function render(force){
+  var q=await getQ();if(!q)return;
+  var ids=q.pending.map(function(v){return v.id}).join(",");
+  $("cnt").textContent=q.pending.length?"("+q.pending.length+")":"";
+  if(!force&&shown!==""&&ids!==shown){$("bn").style.display="block";return}
+  $("bn").style.display="none";shown=ids;
+  var l=$("list");l.innerHTML="";
+  q.pending.forEach(function(v){l.appendChild(card(v))});
+  $("empty").style.display=q.pending.length?"none":"block";
+  var rc=$("recent");rc.innerHTML="";
+  q.recent.forEach(function(r){rc.appendChild(el("div","h",(r.status==="approved"?"✓ approved +"+r.coins:"✗ rejected"+(r.reason?" ("+r.reason+")":""))+" - #"+r.id+" "+r.title+" - "+r.username))});
+}
+$("rf").onclick=function(){render(true)};
+/* ---------- tabs + accounts ---------- */
+function tab(n){$("p1").style.display=n===1?"block":"none";$("pVideos").style.display=n===2?"block":"none";$("p2").style.display=n===3?"block":"none";$("t1").className=n===1?"on":"";$("t2").className=n===2?"on":"";$("t3").className=n===3?"on":"";if(n===2)loadVideos();if(n===3)loadUsers()}
+$("t1").onclick=function(){tab(1)};$("t2").onclick=function(){tab(2)};$("t3").onclick=function(){tab(3)};
+async function loadVideos(){
+ var r=await fetch(window.BRANDNAME_ADMIN_API_BASE+"/api/videos",{credentials:"include"});if(r.status===401){location.href="/";return}
+ var d=await r.json(),box=$("vlist");box.innerHTML="";$("vempty").style.display=d.length?"none":"block";
+ d.forEach(function(v){var row=el("div","urow"),left=el("div","rs");
+ left.appendChild(el("strong","",v.title||("Video #"+v.id)));left.appendChild(el("small","","#"+v.id+" · "+(v.owner||"unknown")+" · "+fmtSize(v.size||0)));
+ var del=el("button","b no","Delete");del.type="button";del.onclick=async function(){if(!confirm("Permanently delete this video and its stored files? This cannot be undone.\\n\\n"+v.title))return;del.disabled=true;var out=await userCall("/api/videos/delete",{id:v.id});if(out)loadVideos();else del.disabled=false};
+ row.appendChild(left);row.appendChild(del);box.appendChild(row)});
+}
+function showCred(box,u,p,title,token){
+  box.innerHTML="";var c=el("div","cred");
+  c.appendChild(el("div","",title));
+  var l1=el("div","","Username: ");l1.appendChild(el("code","",u));c.appendChild(l1);
+  var l2=el("div","","Password: ");l2.appendChild(el("code","",p));c.appendChild(l2);
+  if(token){
+    var l3=el("div","","One-time login token: ");l3.appendChild(el("code","",token));c.appendChild(l3);
+    c.appendChild(el("div","m","Give this token to the user. It is needed only for the first login and binds the account to that browser. It cannot be shown again."));
+  }
+  c.appendChild(el("div","m","The password is stored hashed and cannot be shown again. Use Reset to make a new one."));
+  var cp=el("button","b ok","Copy");cp.type="button";
+  cp.onclick=function(){var t="Username: "+u+"\\nPassword: "+p+(token?"\\nToken: "+token:"");(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){cp.textContent="Copied"},function(){window.prompt("Copy:",t)})};
+  c.appendChild(cp);box.appendChild(c);
+}
+async function userCall(path,body){
+  var r=await fetch(window.BRANDNAME_ADMIN_API_BASE+path,{credentials:"include",method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(r.status===401){location.href="/";return null}
+  var j=await r.json().catch(function(){return{}});
+  if(!r.ok){alert({invalid_username:"Username must be 3-24 characters: a-z, 0-9, _",username_taken:"This username already exists",weak_password:"Password must be at least 6 characters",no_such_user:"No such user"}[j.error]||j.error||"Failed");return null}
+  return j;
+}
+$("mk").onclick=async function(){
+  var j=await userCall("/api/users/create",{username:$("nu").value,password:$("np").value,singleUse:$("ns").checked});
+  if(!j)return;
+  showCred($("res"),j.username,j.password,"Account created",j.token);
+  $("nu").value="";$("np").value="";$("ns").checked=false;loadUsers();
+};
+async function loadUsers(){
+  var r=await fetch(window.BRANDNAME_ADMIN_API_BASE+"/api/users",{credentials:"include"});if(r.status===401){location.href="/";return}
+  var d=await r.json(),box=$("ulist");box.innerHTML="";
+  if(!d.length)box.appendChild(el("div","h","No accounts yet"));
+  d.forEach(function(u){
+    var row=el("div","urow"),left=el("div","");left.appendChild(document.createTextNode(u.username));left.appendChild(el("small","",u.coins+" coins"+(u.single_use?(u.bound?" · single device: bound":" · single device: waiting for first login"):"")));
+    var b=el("button","b no","Reset");b.type="button";
+    b.onclick=async function(){
+      if(!confirm("Generate a new password for "+u.username+"? The old one stops working."))return;
+      var j=await userCall("/api/users/reset",{username:u.username});if(!j)return;
+      tab(3);showCred($("res"),j.username,j.password,"New password",u.single_use?j.token:null);window.scrollTo(0,0);
+    };
+    var dl=el("button","b no","Delete");dl.type="button";
+    dl.onclick=async function(){
+      if(!confirm("Delete account "+u.username+"? Its login, coins and pending requests will be removed."))return;
+      var withVids=confirm("Also delete this user's PUBLISHED videos?\\n\\nOK = delete them too\\nCancel = keep them online");
+      var j=await userCall("/api/users/delete",{username:u.username,deleteVideos:withVids});
+      if(!j)return;
+      loadUsers();loadVideos();
+    };
+    var sh=el("button","b ok","Show");sh.type="button";
+    sh.onclick=async function(){
+      var s=await userCall("/api/users/secret",{username:u.username});
+      if(!s)return;
+      if(!s.password){alert("This account was created before this feature. Use Reset to get a new password.");return}
+      tab(3);
+      showCred($("res"),s.username,s.password,s.bound?"Account details (device already bound, token used)":"Account details",s.token);
+      window.scrollTo(0,0);
+    };
+    var cpb=el("button","b ok","Password");cpb.type="button";
+    cpb.onclick=async function(){
+      var np=prompt("New password for "+u.username+" (at least 6 characters):");
+      if(!np)return;
+      var s=await userCall("/api/users/password",{username:u.username,password:np});
+      if(!s)return;
+      tab(3);
+      showCred($("res"),s.username,s.password,"Password changed (all logged-in browsers were signed out)",null);
+      window.scrollTo(0,0);
+      loadUsers();
+    };
+    if(u.single_use){
+      var nt=el("button","b ok","New token");nt.type="button";
+      nt.onclick=async function(){
+        var msg=u.bound?"This account is bound to a device. A new token will UNBIND it and log out the current browser. Continue?":"Create a new one-time token? The old token will stop working.";
+        if(!confirm(msg))return;
+        var s=await userCall("/api/users/token",{username:u.username});
+        if(!s)return;
+        tab(3);
+        showCred($("res"),s.username,s.password||"(not stored)","New one-time token",s.token);
+        window.scrollTo(0,0);
+        loadUsers();
+      };
+      row.appendChild(left);row.appendChild(sh);row.appendChild(nt);row.appendChild(b);row.appendChild(dl);row.appendChild(cpb);box.appendChild(row);
+    } else {
+      row.appendChild(left);row.appendChild(sh);row.appendChild(b);row.appendChild(dl);row.appendChild(cpb);box.appendChild(row);
+    }
+  });
+}
+render(true);
+setInterval(function(){render(false)},30000);
+</script></body></html>
